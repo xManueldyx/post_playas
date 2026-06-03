@@ -140,6 +140,17 @@ async function publishToInstagram(igUserId: string, pageAccessToken: string, mes
   }
   const { id: creationId } = await createRes.json() as { id: string };
 
+  for (let i = 0; i < 10; i++) {
+    const statusUrl = `https://graph.facebook.com/v22.0/${creationId}?fields=status_code&access_token=${encodeURIComponent(pageAccessToken)}`;
+    const statusRes = await fetch(statusUrl);
+    const statusData = await statusRes.json() as { status_code?: string };
+    if (statusData.status_code === 'FINISHED') break;
+    if (statusData.status_code === 'ERROR') {
+      throw new Error('IG media processing failed with status ERROR');
+    }
+    await new Promise(r => setTimeout(r, 3000));
+  }
+
   const publishUrl = `https://graph.facebook.com/v22.0/${igUserId}/media_publish`;
   const publishParams = new URLSearchParams({
     creation_id: creationId,

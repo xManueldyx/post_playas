@@ -107,8 +107,10 @@ export default function Dashboard() {
     }
 
     setAuthToken(currentToken);
-    console.log('[Dashboard] Loading data...');
     loadData();
+
+    const interval = setInterval(loadData, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
