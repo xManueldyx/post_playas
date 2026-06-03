@@ -264,7 +264,7 @@ export default function Dashboard() {
     setEditTitle(post.title);
     setEditContent(post.content);
     setEditMediaUrl(post.imageUrl || '');
-    setEditScheduledAt(post.scheduledAt ? post.scheduledAt.slice(0, 16) : '');
+    setEditScheduledAt(toDatetimeLocal(post.scheduledAt));
   };
 
   const cancelEdit = () => {
@@ -298,18 +298,30 @@ export default function Dashboard() {
     setEditSaving(false);
   };
 
+  const toDatetimeLocal = (isoString?: string) => {
+    if (!isoString) return '';
+    const d = new Date(isoString);
+    const offset = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - offset * 60000);
+    return local.toISOString().slice(0, 16);
+  };
+
+  const fromDatetimeLocal = (localString: string) => {
+    if (!localString) return null;
+    return new Date(localString).toISOString();
+  };
+
   const formatDate = (value?: string) => {
     if (!value) return 'No programado';
     const date = new Date(value);
-    return new Intl.DateTimeFormat('es-MX', {
-      timeZone: 'America/Mexico_City',
+    return date.toLocaleString('es-MX', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
-    }).format(date);
+    });
   };
 
   return (
@@ -394,10 +406,10 @@ export default function Dashboard() {
                 <label className="block text-sm text-slate-300">
                   Fecha y hora (opcional)
                   <input
-                    value={scheduledAt}
-                    onChange={(event) => setScheduledAt(event.target.value)}
+                    value={toDatetimeLocal(scheduledAt)}
+                    onChange={(event) => setScheduledAt(fromDatetimeLocal(event.target.value) || '')}
                     type="datetime-local"
-                    className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-500"
+                    className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-500 [color-scheme:dark]"
                   />
                 </label>
               </div>
@@ -508,7 +520,7 @@ export default function Dashboard() {
                     type="datetime-local"
                     value={editScheduledAt}
                     onChange={(event) => setEditScheduledAt(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-500"
+                    className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-500 [color-scheme:dark]"
                   />
                 </label>
                 <div className="flex items-center gap-3">
