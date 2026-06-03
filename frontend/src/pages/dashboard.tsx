@@ -53,7 +53,6 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [connecting, setConnecting] = useState<Record<string, boolean>>({});
   const [disconnecting, setDisconnecting] = useState<Record<string, boolean>>({});
-  const [postTemplate, setPostTemplate] = useState<Record<string, string> | null>(null);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
@@ -111,20 +110,6 @@ export default function Dashboard() {
 
     const interval = setInterval(loadData, 5000);
     return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    const saved = localStorage.getItem('postTemplate');
-    if (saved) {
-      try {
-        setPostTemplate(JSON.parse(saved));
-      } catch {
-        setPostTemplate(null);
-      }
-    }
   }, []);
 
   const handleConnect = async (provider: string) => {
@@ -437,13 +422,7 @@ export default function Dashboard() {
                     Archivo cargado: <a className="text-cyan-300" href={mediaUrl} target="_blank" rel="noreferrer">ver</a>
                   </p>
                 )}
-              </label>
-              <label className="block text-sm text-slate-300">
-                Estilo del post
-                <Link href="/templates" className="ml-2 text-cyan-300 hover:text-cyan-200 text-sm">
-                  Crear formato personalizado
-                </Link>
-              </label>
+                </label>
               <div className="rounded-3xl bg-slate-950/70 p-4">
                 <p className="text-sm text-slate-400">Selecciona destinos</p>
                 <div className="mt-3 grid gap-3">
@@ -575,9 +554,9 @@ export default function Dashboard() {
                     key={post.id}
                     className="rounded-3xl border p-5"
                     style={{
-                      background: postTemplate?.background || 'rgba(15, 23, 42, 0.8)',
-                      borderColor: postTemplate?.cardBorder || 'rgb(148 163 184 / 1)',
-                      color: postTemplate?.textColor || 'rgb(226 232 240 / 1)',
+                      background: 'rgba(15, 23, 42, 0.8)',
+                      borderColor: 'rgb(148 163 184 / 1)',
+                      color: 'rgb(226 232 240 / 1)',
                     }}
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
