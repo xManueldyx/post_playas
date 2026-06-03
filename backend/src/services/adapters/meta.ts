@@ -193,35 +193,24 @@ export class MetaAdapter implements ProviderAdapter {
       throw new Error('No Facebook Pages found. Crea una Pagina de Facebook en https://facebook.com/pages/create');
     }
 
-    let result: PublishResult | null = null;
+    const page = pages[0];
 
-    for (const page of pages) {
-      if (page.instagramAccountId) {
-        try {
-          const igResult = await publishToInstagram(page.instagramAccountId, page.accessToken, message, imageUrl);
-          result = { externalId: igResult.id || `ig-${post.id}` };
-          logger.info('Publicado en Instagram: %s', result.externalId);
-        } catch (error) {
-          logger.warn('Error publicando en Instagram: %o', error);
-        }
-        break;
+    if (provider === 'INSTAGRAM') {
+      if (!page.instagramAccountId) {
+        throw new Error('No tienes una cuenta de Instagram Business vinculada a tu pagina de Facebook.');
       }
+      if (!imageUrl) {
+        throw new Error('Instagram requiere una imagen para publicar.');
+      }
+      const igResult = await publishToInstagram(page.instagramAccountId, page.accessToken, message, imageUrl);
+      return { externalId: igResult.id || `ig-${post.id}` };
     }
 
-    try {
-      const page = pages[0];
+    if (provider === 'FACEBOOK') {
       const fbResult = await publishToFacebookPage(page.id, page.accessToken, message, imageUrl);
-      return { externalId: result ? `${result.externalId},${fbResult.post_id || fbResult.id}` : (fbResult.post_id || fbResult.id || `fb-${post.id}`) };
-    } catch (fbError: any) {
-      if (result) return result;
-      const fbMsg = fbError?.message || '';
-      if (fbMsg.includes('pages_manage_posts') || fbMsg.includes('permission')) {
-        throw new Error(
-          'Para publicar en Facebook necesitas el permiso pages_manage_posts. ' +
-          'Para publicar en Instagram, vincula una cuenta de Instagram Business a tu pagina.',
-        );
-      }
-      throw fbError;
+      return { externalId: fbResult.post_id || fbResult.id || `fb-${post.id}` };
     }
+
+    throw new Error(`Provider no soportado: ${provider}`);
   }
 }
