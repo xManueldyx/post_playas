@@ -6,8 +6,7 @@ import { useAuthStore } from '../store/useAuthStore';
 
 const providers = [
   { id: 'X', label: 'X' },
-  { id: 'INSTAGRAM', label: 'Instagram' },
-  { id: 'FACEBOOK', label: 'Facebook' },
+  { id: 'FACEBOOK', label: 'Facebook / Instagram' },
   { id: 'LINKEDIN', label: 'LinkedIn' },
 ];
 
