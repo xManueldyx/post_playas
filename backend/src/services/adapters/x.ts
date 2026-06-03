@@ -20,7 +20,10 @@ export class XAdapter implements ProviderAdapter {
 
     if (!response.ok) {
       const errorBody = await response.text();
-      throw new Error(`X API error ${response.status}: ${errorBody}`);
+      if (errorBody.includes('CreditsDepleted')) {
+        throw new Error('Alcanzaste el limite de posts de X. Espera al reset mensual de creditos.');
+      }
+      throw new Error('Error al publicar en X. Intenta de nuevo.');
     }
 
     const data = await response.json();
