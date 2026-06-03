@@ -82,6 +82,13 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    const urlToken = typeof window !== 'undefined' && router.query.token ? String(router.query.token) : null;
+    if (urlToken) {
+      localStorage.setItem('token', urlToken);
+      setAuthToken(urlToken);
+      useAuthStore.getState().setToken(urlToken);
+    }
+
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) {
       window.location.href = '/login';
@@ -97,7 +104,7 @@ export default function Dashboard() {
     }
     
     loadData();
-  }, [router.query.connected]);
+  }, [router.query.connected, router.query.token]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {

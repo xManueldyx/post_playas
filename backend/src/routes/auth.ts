@@ -25,6 +25,8 @@ const createRefreshToken = (user: { id: string; role: string }) =>
     expiresIn: '7d',
   });
 
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
 authRouter.post('/register', async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -79,7 +81,7 @@ authRouter.post('/refresh', async (req, res, next) => {
 // In-memory store for OAuth state (in production, use Redis or database)
 const authorizationCodes = new Map<
   string,
-  { provider: string; userId: string; providerAccountId: string; expiresAt: number; codeVerifier?: string }
+  { provider: string; userId: string; providerAccountId: string; expiresAt: number; codeVerifier?: string; jwtToken?: string }
 >();
 
 // OAuth: Initiate authorization flow
@@ -126,6 +128,7 @@ authRouter.get('/authorize/:provider', async (req, res, next) => {
       providerAccountId: `${providerKey}-user-${Date.now()}`,
       expiresAt: Date.now() + 10 * 60 * 1000,
       codeVerifier,
+      jwtToken: actualToken,
     });
 
     if (providerConfig) {
@@ -261,7 +264,7 @@ authRouter.get('/callback/:provider', async (req, res, next) => {
     });
 
     authorizationCodes.delete(state);
-    res.redirect(`http://localhost:3000/dashboard?provider=${providerKey}&connected=true`);
+    res.redirect(`${frontendUrl}/dashboard?provider=${providerKey}&connected=true&token=${encodeURIComponent(authData.jwtToken || '')}`);
   } catch (error) {
     next(error);
   }
@@ -337,7 +340,7 @@ authRouter.post('/callback', async (req, res, next) => {
     authorizationCodes.delete(state);
 
     // Redirect back to dashboard with success message
-    res.redirect(`http://localhost:3000/dashboard?provider=${provider}&connected=true`);
+    res.redirect(`${frontendUrl}/dashboard?provider=${provider}&connected=true&token=${encodeURIComponent(authData.jwtToken || '')}`);
   } catch (error) {
     next(error);
   }
