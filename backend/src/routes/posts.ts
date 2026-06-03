@@ -106,12 +106,18 @@ postRouter.delete('/:id', async (req: AuthRequest, res, next) => {
   try {
     const postId = req.params.id;
     const userId = req.user?.id as string;
-    const deleted = await prisma.post.deleteMany({
-      where: { id: postId, userId },
+
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { userId: true },
     });
-    if (deleted.count === 0) {
+    if (!post || post.userId !== userId) {
       return res.status(404).json({ error: 'Post no encontrado' });
     }
+
+    await prisma.postDestination.deleteMany({ where: { postId } });
+    await prisma.post.delete({ where: { id: postId } });
+
     res.status(204).send();
   } catch (error) {
     next(error);

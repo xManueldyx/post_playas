@@ -88,9 +88,9 @@ model PostDestination {
   attemptedAt     DateTime?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
-  post            Post              @relation(fields: [postId], references: [id])
+  post            Post              @relation(fields: [postId], references: [id], onDelete: Cascade)
   postId          String
-  socialAccount   SocialAccount     @relation(fields: [socialAccountId], references: [id])
+  socialAccount   SocialAccount     @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
   socialAccountId String
 }
 

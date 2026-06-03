@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import logger from '../lib/logger';
 
 const algorithm = 'aes-256-gcm';
 const key = crypto.createHash('sha256').update(process.env.OAUTH_TOKEN_ENCRYPTION_KEY ?? 'default-oauth-encryption-key-32-chars!').digest();
@@ -22,6 +23,20 @@ export function generatePkceVerifier() {
 export function generatePkceChallenge(verifier: string) {
   const hash = crypto.createHash('sha256').update(verifier).digest();
   return base64UrlEncode(hash);
+}
+
+async function exchangeFacebookLongLivedToken(config: { clientId: string; clientSecret: string }, shortLivedToken: string) {
+  const url = `https://graph.facebook.com/v22.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${encodeURIComponent(config.clientId)}&client_secret=${encodeURIComponent(config.clientSecret)}&fb_exchange_token=${encodeURIComponent(shortLivedToken)}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`FB token exchange failed: ${response.status} ${err}`);
+  }
+  const data = await response.json();
+  return {
+    accessToken: data.access_token,
+    expiresIn: Number(data.expires_in ?? 5184000),
+  };
 }
 
 export function encryptToken(token: string) {
@@ -146,7 +161,7 @@ const providerConfigs: Record<ProviderKey, OAuthProviderConfig | null> = {
           authUrl: 'https://api.instagram.com/oauth/authorize',
           tokenUrl: 'https://api.instagram.com/oauth/access_token',
           redirectUri: process.env.INSTAGRAM_REDIRECT_URI,
-          scopes: 'user_profile,user_media,pages_show_list,instagram_basic,instagram_content_publish',
+          scopes: 'user_profile,user_media',
         }
       : null,
   FACEBOOK:
@@ -154,10 +169,10 @@ const providerConfigs: Record<ProviderKey, OAuthProviderConfig | null> = {
       ? {
           clientId: process.env.META_CLIENT_ID,
           clientSecret: process.env.META_CLIENT_SECRET,
-          authUrl: 'https://www.facebook.com/v17.0/dialog/oauth',
-          tokenUrl: 'https://graph.facebook.com/v17.0/oauth/access_token',
+          authUrl: 'https://www.facebook.com/v22.0/dialog/oauth',
+          tokenUrl: 'https://graph.facebook.com/v22.0/oauth/access_token',
           redirectUri: process.env.META_REDIRECT_URI,
-          scopes: 'pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish',
+          scopes: 'pages_show_list,instagram_basic,instagram_content_publish,pages_manage_posts',
         }
       : null,
   LINKEDIN:
@@ -191,6 +206,10 @@ export function buildOAuthAuthorizeUrl(provider: ProviderKey, state: string, cod
     scope: config.scopes,
     state,
   });
+
+  if (provider === 'FACEBOOK') {
+    params.set('auth_type', 'rerequest');
+  }
 
   if (config.usePkce && codeChallenge) {
     params.set('code_challenge', codeChallenge);
@@ -232,12 +251,23 @@ export async function exchangeOAuthCode(provider: ProviderKey, code: string, cod
   }
 
   const data = await response.json();
-  const rawAccessToken = data.access_token ?? data.accessToken;
+  let rawAccessToken = data.access_token ?? data.accessToken;
+  let expiresIn = Number(data.expires_in ?? data.expiresIn ?? 3600);
+
+  if (provider === 'FACEBOOK') {
+    try {
+      const longLived = await exchangeFacebookLongLivedToken(config, rawAccessToken);
+      rawAccessToken = longLived.accessToken;
+      expiresIn = longLived.expiresIn;
+    } catch (err) {
+      logger.warn('No se pudo intercambiar token de corta duracion de Facebook: %o', err);
+    }
+  }
+
   const accessToken = encryptToken(rawAccessToken);
   const refreshToken = data.refresh_token
     ? encryptToken(data.refresh_token)
     : encryptToken(`refresh_${crypto.randomBytes(16).toString('hex')}`);
-  const expiresIn = Number(data.expires_in ?? data.expiresIn ?? 3600);
   const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
   let providerAccountId: string | undefined;

@@ -9,5 +9,5 @@ export async function publishToProvider(
 ) {
   const adapter = adapterForProvider(provider);
   logger.info('Enrutando publicación a %s para post %s', provider, post.id);
-  return adapter.publish(post, context);
+  return adapter.publish(post, { ...context, provider });
 }

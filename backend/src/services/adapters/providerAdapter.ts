@@ -12,6 +12,7 @@ export interface PublishPayload {
 export interface ProviderPublishContext {
   accessToken?: string;
   providerAccountId?: string;
+  provider?: string;
 }
 
 export interface ProviderAdapter {

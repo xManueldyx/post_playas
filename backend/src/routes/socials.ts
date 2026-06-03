@@ -70,7 +70,18 @@ socialRouter.post('/connect', authenticate, async (req: AuthRequest, res, next) 
 socialRouter.delete('/:id', authenticate, async (req: AuthRequest, res, next) => {
   try {
     const accountId = req.params.id;
-    await prisma.socialAccount.deleteMany({ where: { id: accountId, userId: req.user?.id } });
+    const userId = req.user?.id as string;
+
+    const account = await prisma.socialAccount.findUnique({
+      where: { id: accountId },
+      select: { userId: true },
+    });
+    if (!account || account.userId !== userId) {
+      return res.status(404).json({ error: 'Cuenta no encontrada' });
+    }
+
+    await prisma.postDestination.deleteMany({ where: { socialAccountId: accountId } });
+    await prisma.socialAccount.delete({ where: { id: accountId } });
     res.status(204).send();
   } catch (error) {
     next(error);

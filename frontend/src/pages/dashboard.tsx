@@ -22,6 +22,7 @@ interface PostDestination {
   id: string;
   provider: string;
   status: string;
+  errorMessage?: string;
 }
 
 interface Post {
@@ -607,6 +608,9 @@ export default function Dashboard() {
                           <div key={destination.id} className="rounded-2xl bg-slate-900 p-3 text-sm text-slate-200">
                             <div className="font-semibold">{destination.provider}</div>
                             <div className="text-slate-400">{destination.status}</div>
+                            {destination.errorMessage && destination.status === 'FAILED' && (
+                              <div className="mt-1 text-xs text-red-400 break-all">{destination.errorMessage}</div>
+                            )}
                           </div>
                         ))}
                       </div>
