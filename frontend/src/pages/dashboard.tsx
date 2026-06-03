@@ -82,31 +82,21 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    // Ensure token is initialized from localStorage (in case _app hydration ran after)
-    const existing = tokenState ?? useAuthStore.getState().token;
-    if (!existing) {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      if (token) {
-        setAuthToken(token);
-        useAuthStore.getState().setToken(token);
-        loadData();
-        return;
-      }
-      // Not authenticated — redirect to login
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
       window.location.href = '/login';
       return;
     }
+    setAuthToken(token);
+    useAuthStore.getState().setToken(token);
     
-    // Check if returning from OAuth callback
     if (router.query.connected === 'true') {
       const provider = router.query.provider as string;
       setMessage(`✓ ${provider} conectado correctamente.`);
-      loadData();
-      // Clean up URL
       router.replace('/dashboard', undefined, { shallow: true });
-    } else {
-      loadData();
     }
+    
+    loadData();
   }, [router.query.connected]);
 
   useEffect(() => {
