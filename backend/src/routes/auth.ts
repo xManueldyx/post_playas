@@ -211,6 +211,16 @@ authRouter.get('/callback/:provider', async (req, res, next) => {
     const provider = req.params.provider?.toUpperCase();
     const state = typeof req.query.state === 'string' ? req.query.state : undefined;
     const code = typeof req.query.code === 'string' ? req.query.code : undefined;
+    const errorParam = typeof req.query.error === 'string' ? req.query.error : undefined;
+    const errorDesc = typeof req.query.error_description === 'string' ? req.query.error_description : undefined;
+
+    if (errorParam) {
+      return res.status(400).json({ error: `OAuth error: ${errorParam} - ${errorDesc || ''}` });
+    }
+
+    if (!code) {
+      return res.status(400).json({ error: 'No se recibio el codigo de autorizacion. Verifica los permisos en el portal del proveedor.' });
+    }
 
     const validProviders = ['X', 'INSTAGRAM', 'FACEBOOK', 'LINKEDIN'] as const;
     if (!provider || !validProviders.includes(provider as typeof validProviders[number])) {
@@ -262,6 +272,35 @@ authRouter.get('/callback/:provider', async (req, res, next) => {
         userId: authData.userId,
       },
     });
+
+    if (providerKey === 'FACEBOOK') {
+      const igProviderAccountId = `IG-${finalProviderAccountId}`;
+      await prisma.socialAccount.upsert({
+        where: {
+          provider_providerAccountId: {
+            provider: 'INSTAGRAM',
+            providerAccountId: igProviderAccountId,
+          },
+        },
+        update: {
+          status: 'connected',
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresAt: tokens.expiresAt,
+          userId: authData.userId,
+        },
+        create: {
+          provider: 'INSTAGRAM',
+          providerAccountId: igProviderAccountId,
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresAt: tokens.expiresAt,
+          scopes: 'read,write',
+          status: 'connected',
+          userId: authData.userId,
+        },
+      });
+    }
 
     authorizationCodes.delete(state);
     res.redirect(`${frontendUrl}/dashboard?provider=${providerKey}&connected=true&token=${encodeURIComponent(authData.jwtToken || '')}`);
