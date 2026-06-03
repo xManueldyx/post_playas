@@ -146,10 +146,10 @@ const providerConfigs: Record<ProviderKey, OAuthProviderConfig | null> = {
       ? {
           clientId: process.env.X_CLIENT_ID,
           clientSecret: process.env.X_CLIENT_SECRET,
-          authUrl: 'https://twitter.com/i/oauth2/authorize',
-          tokenUrl: 'https://api.twitter.com/2/oauth2/token',
+          authUrl: 'https://x.com/i/oauth2/authorize',
+          tokenUrl: 'https://api.x.com/2/oauth2/token',
           redirectUri: process.env.X_REDIRECT_URI,
-          scopes: 'tweet.read tweet.write users.read offline.access',
+          scopes: 'tweet.read tweet.write users.read',
           usePkce: true,
         }
       : null,

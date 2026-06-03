@@ -82,29 +82,34 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    const urlToken = typeof window !== 'undefined' && router.query.token ? String(router.query.token) : null;
+    if (typeof window === 'undefined') return;
+    console.log('[Dashboard] useEffect running');
+
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
     if (urlToken) {
-      localStorage.setItem('token', urlToken);
-      setAuthToken(urlToken);
+      console.log('[Dashboard] Token from URL, saving');
       useAuthStore.getState().setToken(urlToken);
     }
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
+    if (params.get('connected') === 'true') {
+      const provider = params.get('provider');
+      setMessage(`✓ ${provider} conectado correctamente.`);
+      window.history.replaceState({}, '', '/dashboard');
+    }
+
+    const currentToken = useAuthStore.getState().token || localStorage.getItem('token');
+    console.log('[Dashboard] Token check:', currentToken ? 'FOUND' : 'NOT FOUND');
+    if (!currentToken) {
+      console.log('[Dashboard] No token, redirecting to login');
       window.location.href = '/login';
       return;
     }
-    setAuthToken(token);
-    useAuthStore.getState().setToken(token);
-    
-    if (router.query.connected === 'true') {
-      const provider = router.query.provider as string;
-      setMessage(`✓ ${provider} conectado correctamente.`);
-      router.replace('/dashboard', undefined, { shallow: true });
-    }
-    
+
+    setAuthToken(currentToken);
+    console.log('[Dashboard] Loading data...');
     loadData();
-  }, [router.query.connected, router.query.token]);
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') {

@@ -7,15 +7,13 @@ import { setAuthToken } from '../lib/api';
 import { useAuthStore } from '../store/useAuthStore';
 
 export default function App({ Component, pageProps }: AppProps) {
-  const setToken = useAuthStore((s) => s.setToken);
+  const token = useAuthStore((s) => s.token);
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (token) {
       setAuthToken(token);
-      setToken(token);
     }
-  }, [setToken]);
+  }, [token]);
 
   return (
     <QueryClientProvider client={queryClient}>

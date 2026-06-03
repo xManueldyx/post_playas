@@ -9,7 +9,7 @@ export class XAdapter implements ProviderAdapter {
       throw new Error('No access token available for X publishing');
     }
 
-    const response = await fetch('https://api.twitter.com/2/tweets', {
+    const response = await fetch('https://api.x.com/2/tweets', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${context.accessToken}`,

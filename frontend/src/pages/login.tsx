@@ -1,24 +1,35 @@
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import api, { setAuthToken } from '../lib/api';
 import { useAuthStore } from '../store/useAuthStore';
 
 export default function Login() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    console.log('[Login] Submitting...');
     try {
       const response = await api.post('/auth/login', { email, password });
+      console.log('[Login] Response:', response.data);
       const token = response.data.token as string;
+      if (!token) {
+        console.error('[Login] No token in response!');
+        setError('Error: no se recibio token');
+        return;
+      }
       setAuthToken(token);
       localStorage.setItem('token', token);
       useAuthStore.getState().setToken(token);
-      window.location.href = '/dashboard';
+      console.log('[Login] Token saved, navigating to dashboard');
+      router.push('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Error de inicio de sesión');
+      console.error('[Login] Error:', err);
+      setError(err.response?.data?.error || 'Error de inicio de sesion');
     }
   };
 
