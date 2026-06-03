@@ -183,7 +183,7 @@ const providerConfigs: Record<ProviderKey, OAuthProviderConfig | null> = {
           authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
           tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
           redirectUri: process.env.LINKEDIN_REDIRECT_URI,
-          scopes: 'r_liteprofile r_emailaddress w_member_social',
+          scopes: 'openid profile email w_member_social',
           usePkce: true,
         }
       : null,
