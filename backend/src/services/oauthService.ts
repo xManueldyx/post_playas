@@ -183,7 +183,7 @@ const providerConfigs: Record<ProviderKey, OAuthProviderConfig | null> = {
           authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
           tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
           redirectUri: process.env.LINKEDIN_REDIRECT_URI,
-          scopes: 'openid profile email w_member_social',
+          scopes: 'w_member_social',
           usePkce: true,
         }
       : null,
@@ -237,12 +237,23 @@ export async function exchangeOAuthCode(provider: ProviderKey, code: string, cod
     body.set('code_verifier', codeVerifier);
   }
 
+  let bodyString = body.toString();
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  };
+
+  if (provider === 'LINKEDIN') {
+    bodyString = `grant_type=authorization_code&code=${encodeURIComponent(code)}&redirect_uri=${encodeURIComponent(config.redirectUri)}&client_id=${encodeURIComponent(config.clientId)}&client_secret=${encodeURIComponent(config.clientSecret)}`;
+    if (config.usePkce && codeVerifier) {
+      bodyString += `&code_verifier=${encodeURIComponent(codeVerifier)}`;
+    }
+  }
+
   const response = await fetch(config.tokenUrl, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: body.toString(),
+    headers,
+    body: provider === 'LINKEDIN' ? bodyString : body.toString(),
   });
 
   if (!response.ok) {
