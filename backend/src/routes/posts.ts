@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import prisma from '../lib/prisma';
-import { publishQueue } from '../queue/queue';
+import { schedulePost, publishNow } from '../queue/queue';
 
 const postRouter = Router();
 
@@ -13,24 +13,47 @@ postRouter.post('/', async (req: AuthRequest, res, next) => {
     const userId = req.user?.id as string;
     const finalMediaUrl = mediaUrl || imageUrl || null;
 
+    const hasInstagram = destinations?.some(
+      (d: any) => d.provider === 'INSTAGRAM'
+    );
+
+    if (hasInstagram && !finalMediaUrl) {
+      return res.status(400).json({
+        error: 'Instagram requiere una imagen o video. Sube un archivo multimedia.',
+      });
+    }
+
+    const scheduledDate = scheduledAt ? new Date(scheduledAt) : null;
+    const isPastSchedule = scheduledDate && scheduledDate <= new Date();
+
     const post = await prisma.post.create({
       data: {
         title,
         content,
         imageUrl: finalMediaUrl,
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-        status: scheduledAt ? 'SCHEDULED' : 'DRAFT',
+        scheduledAt: scheduledDate,
+        status: scheduledDate
+          ? (isPastSchedule ? 'PUBLISHING' : 'SCHEDULED')
+          : 'DRAFT',
         userId,
         destinations: {
           create: destinations.map((destination: any) => ({
             provider: destination.provider,
             status: 'PENDING',
             socialAccountId: destination.socialAccountId,
+            caption: destination.caption || null,
           })),
         },
       },
       include: { destinations: true },
     });
+
+    if (scheduledDate && post.status === 'PUBLISHING') {
+      await publishNow(post.id);
+    } else if (scheduledDate && post.status === 'SCHEDULED') {
+      await schedulePost(post.id, scheduledDate);
+    }
+
     res.status(201).json({ post });
   } catch (error) {
     next(error);
@@ -79,15 +102,20 @@ postRouter.put('/:id', async (req: AuthRequest, res, next) => {
       return res.status(404).json({ error: 'Post no encontrado' });
     }
 
+    const scheduledDate = scheduledAt ? new Date(scheduledAt) : null;
+    const isPastSchedule = scheduledDate && scheduledDate <= new Date();
+
     const updateData: any = {
       title,
       content,
       imageUrl: finalMediaUrl,
-      scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+      scheduledAt: scheduledDate,
     };
 
     if (existing.status === 'DRAFT' || existing.status === 'SCHEDULED') {
-      updateData.status = scheduledAt ? 'SCHEDULED' : 'DRAFT';
+      updateData.status = scheduledDate
+        ? (isPastSchedule ? 'PUBLISHING' : 'SCHEDULED')
+        : 'DRAFT';
     }
 
     const post = await prisma.post.update({
@@ -95,6 +123,12 @@ postRouter.put('/:id', async (req: AuthRequest, res, next) => {
       data: updateData,
       include: { destinations: true },
     });
+
+    if (scheduledDate && post.status === 'PUBLISHING') {
+      await publishNow(post.id);
+    } else if (scheduledDate && post.status === 'SCHEDULED') {
+      await schedulePost(post.id, scheduledDate);
+    }
 
     res.json({ post });
   } catch (error) {
@@ -143,7 +177,7 @@ postRouter.post('/:id/publish', async (req: AuthRequest, res, next) => {
     }
 
     if (existing.status === 'PUBLISHING') {
-      return res.status(202).json({ message: 'El post ya está en cola para publicación' });
+      return res.status(202).json({ message: 'El post ya esta en cola para publicacion' });
     }
 
     await prisma.post.update({
@@ -151,7 +185,7 @@ postRouter.post('/:id/publish', async (req: AuthRequest, res, next) => {
       data: { status: 'PUBLISHING' },
     });
 
-    await publishQueue.add({ postId }, { attempts: 3, backoff: { type: 'exponential', delay: 10000 } });
+    await publishNow(postId);
 
     res.status(202).json({ message: 'Post enviado al scheduler' });
   } catch (error) {

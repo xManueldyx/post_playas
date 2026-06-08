@@ -3,9 +3,11 @@ import logger from '../../lib/logger';
 import fs from 'fs';
 import path from 'path';
 
+const FETCH_TIMEOUT_MS = 30_000;
+
 async function getPagesWithInstagram(userAccessToken: string) {
   const url = `https://graph.facebook.com/v22.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${encodeURIComponent(userAccessToken)}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   const text = await res.text();
   logger.info('GET /me/accounts status=%d body=%s', res.status, text.slice(0, 500));
   if (res.ok) {
@@ -23,7 +25,7 @@ async function getPagesWithInstagram(userAccessToken: string) {
 
 async function getPageDirect(pageId: string, userAccessToken: string) {
   const url = `https://graph.facebook.com/v22.0/${pageId}?fields=id,name,access_token,instagram_business_account&access_token=${encodeURIComponent(userAccessToken)}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   const text = await res.text();
   logger.info('GET page %s status=%d body=%s', pageId, res.status, text.slice(0, 400));
   if (!res.ok) return null;
@@ -54,7 +56,7 @@ async function publishToFacebookPage(pageId: string, pageAccessToken: string, me
         formData.append('message', message);
         formData.append('access_token', pageAccessToken);
 
-        const res = await fetch(pagePhotosUrl, { method: 'POST', body: formData });
+        const res = await fetch(pagePhotosUrl, { method: 'POST', body: formData, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
         const body = await res.text();
         if (!res.ok) throw new Error(`FB photo upload failed: ${res.status} ${body}`);
         return JSON.parse(body);
@@ -67,6 +69,7 @@ async function publishToFacebookPage(pageId: string, pageAccessToken: string, me
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: params.toString(),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
       const body = await res.text();
       if (!res.ok) throw new Error(`FB photo post failed: ${res.status} ${body}`);
@@ -79,6 +82,7 @@ async function publishToFacebookPage(pageId: string, pageAccessToken: string, me
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: params.toString(),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   const body = await res.text();
   if (!res.ok) throw new Error(`FB page publish failed: ${res.status} ${body}`);
@@ -105,12 +109,13 @@ async function publishToInstagram(igUserId: string, pageAccessToken: string, mes
       const photoRes = await fetch(`https://graph.facebook.com/v22.0/me/photos`, {
         method: 'POST',
         body: formData,
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
       const photoBody = await photoRes.text();
       if (photoRes.ok) {
         const photoData = JSON.parse(photoBody);
         const photoId = photoData.id;
-        const picRes = await fetch(`https://graph.facebook.com/v22.0/${photoId}?fields=images&access_token=${encodeURIComponent(pageAccessToken)}`);
+        const picRes = await fetch(`https://graph.facebook.com/v22.0/${photoId}?fields=images&access_token=${encodeURIComponent(pageAccessToken)}`, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
         const picData = await picRes.json();
         if (picData.images?.[0]?.source) {
           publicImageUrl = picData.images[0].source;
@@ -133,6 +138,7 @@ async function publishToInstagram(igUserId: string, pageAccessToken: string, mes
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: createParams.toString(),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!createRes.ok) {
     const err = await createRes.text();
@@ -142,7 +148,7 @@ async function publishToInstagram(igUserId: string, pageAccessToken: string, mes
 
   for (let i = 0; i < 10; i++) {
     const statusUrl = `https://graph.facebook.com/v22.0/${creationId}?fields=status_code&access_token=${encodeURIComponent(pageAccessToken)}`;
-    const statusRes = await fetch(statusUrl);
+    const statusRes = await fetch(statusUrl, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     const statusData = await statusRes.json() as { status_code?: string };
     if (statusData.status_code === 'FINISHED') break;
     if (statusData.status_code === 'ERROR') {
@@ -160,6 +166,7 @@ async function publishToInstagram(igUserId: string, pageAccessToken: string, mes
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: publishParams.toString(),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!publishRes.ok) {
     const err = await publishRes.text();
@@ -203,7 +210,28 @@ export class MetaAdapter implements ProviderAdapter {
         throw new Error('Instagram requiere una imagen para publicar.');
       }
       const igResult = await publishToInstagram(page.instagramAccountId, page.accessToken, message, imageUrl);
-      return { externalId: igResult.id || `ig-${post.id}` };
+      const mediaId = igResult.id;
+
+      if (post.caption && mediaId) {
+        logger.info('Publicando comentario en Instagram media %s', mediaId);
+        const commentUrl = `https://graph.facebook.com/v22.0/${mediaId}/comments`;
+        const commentParams = new URLSearchParams({
+          message: post.caption,
+          access_token: page.accessToken,
+        });
+        const commentRes = await fetch(commentUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: commentParams.toString(),
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        });
+        if (!commentRes.ok) {
+          const err = await commentRes.text();
+          logger.warn('No se pudo publicar el comentario en Instagram: %s', err);
+        }
+      }
+
+      return { externalId: mediaId || `ig-${post.id}` };
     }
 
     if (provider === 'FACEBOOK') {

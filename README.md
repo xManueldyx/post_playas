@@ -32,8 +32,7 @@ La app estara disponible en:
 |-----------|--------|----------------------|
 | frontend  | 3000   | Next.js + React      |
 | backend   | 4000   | Express + Node.js    |
-| db        | 5432   | PostgreSQL           |
-| redis     | 6379   | Redis para colas     |
+| db        | 5432   | PostgreSQL + pg-boss |
 
 ### Redes sociales configuradas
 
@@ -42,7 +41,7 @@ La app estara disponible en:
 | Facebook   | OK     | Pagina de Facebook + App en Meta Developers   |
 | Instagram  | OK     | Cuenta Business vinculada a la pagina         |
 | X/Twitter  | OK     | App en X Developer, requiere ngrok para HTTPS |
-| LinkedIn   | Pendiente | App en LinkedIn Developers, requiere ngrok |
+| LinkedIn   | OK | App en LinkedIn Developers, requiere ngrok |
 
 ### Túnel HTTPS (para X y LinkedIn)
 
@@ -65,8 +64,8 @@ post_playas/
 │   │   ├── services/     # Logica de negocio y adaptadores
 │   │   │   └── adapters/ # Facebook, Instagram, X, LinkedIn
 │   │   ├── middleware/    # Auth, errores
-│   │   ├── queue/        # BullMQ + Redis
-│   │   ├── jobs/         # Scheduler cron
+│   │   ├── queue/        # pg-boss (cola sobre PostgreSQL)
+│   │   ├── jobs/         # Scheduler de posts vencidos
 │   │   └── lib/          # Prisma, logger, JWT
 │   └── .env
 ├── frontend/
@@ -88,12 +87,19 @@ post_playas/
 | GET    | /api/auth/callback/:prov   | Callback OAuth                  |
 | GET    | /api/socials               | Listar cuentas conectadas       |
 | DELETE | /api/socials/:id           | Desconectar cuenta              |
-| POST   | /api/posts                 | Crear post                      |
+| POST   | /api/posts                 | Crear post (admite programacion)|
 | GET    | /api/posts                 | Listar posts                    |
 | PUT    | /api/posts/:id             | Editar post                     |
 | DELETE | /api/posts/:id             | Eliminar post                   |
 | POST   | /api/posts/:id/publish     | Publicar ahora                  |
-| POST   | /api/uploads               | Subir imagen                    |
+| POST   | /api/uploads               | Subir imagen/video              |
+
+### Funcionalidades
+
+- **Programacion de posts**: define fecha/hora futura. Si pones una fecha pasada, se publica de inmediato.
+- **Scheduler**: monitorea cada 30s posts `SCHEDULED` vencidos y posts `PUBLISHING` huerfanos, re-despachandolos automaticamente.
+- **Comentarios en Instagram**: el campo "Comentario para Instagram" publica un comentario real en el post via `POST /{media-id}/comments` de la Graph API.
+- **Timeouts**: todas las llamadas `fetch` a APIs externas tienen timeout de 30s para evitar cuelgues.
 
 ### Variables de entorno (.env)
 
@@ -103,12 +109,15 @@ JWT_SECRET=...
 JWT_REFRESH_SECRET=...
 PORT=4000
 CORS_ORIGIN=http://localhost:3000
-REDIS_URL=redis://redis:6379
+OAUTH_TOKEN_ENCRYPTION_KEY=clave-segura-de-32-caracteres-minimo
 
 # Meta (Facebook + Instagram)
 META_CLIENT_ID=...
 META_CLIENT_SECRET=...
 META_REDIRECT_URI=http://localhost:4000/api/auth/callback/FACEBOOK
+INSTAGRAM_CLIENT_ID=...
+INSTAGRAM_CLIENT_SECRET=...
+INSTAGRAM_REDIRECT_URI=http://localhost:4000/api/auth/callback/INSTAGRAM
 FACEBOOK_PAGE_ID=...
 
 # X/Twitter

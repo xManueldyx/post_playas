@@ -147,7 +147,7 @@ const providerConfigs: Record<ProviderKey, OAuthProviderConfig | null> = {
           clientId: process.env.X_CLIENT_ID,
           clientSecret: process.env.X_CLIENT_SECRET,
           authUrl: 'https://x.com/i/oauth2/authorize',
-          tokenUrl: 'https://api.x.com/2/oauth2/token',
+          tokenUrl: 'https://api.twitter.com/2/oauth2/token',
           redirectUri: process.env.X_REDIRECT_URI,
           scopes: 'tweet.read tweet.write users.read',
           usePkce: true,
@@ -172,7 +172,7 @@ const providerConfigs: Record<ProviderKey, OAuthProviderConfig | null> = {
           authUrl: 'https://www.facebook.com/v22.0/dialog/oauth',
           tokenUrl: 'https://graph.facebook.com/v22.0/oauth/access_token',
           redirectUri: process.env.META_REDIRECT_URI,
-          scopes: 'pages_show_list,instagram_basic,instagram_content_publish,pages_manage_posts',
+          scopes: 'pages_show_list,instagram_basic,instagram_content_publish,instagram_manage_comments,pages_read_engagement,pages_manage_posts',
         }
       : null,
   LINKEDIN:

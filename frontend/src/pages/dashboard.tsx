@@ -46,6 +46,7 @@ export default function Dashboard() {
   const [mediaUploading, setMediaUploading] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+  const [instagramCaption, setInstagramCaption] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
@@ -190,6 +191,16 @@ export default function Dashboard() {
       return;
     }
 
+    const hasInstagram = selectedAccounts.some((id) => {
+      const account = accounts.find((a) => a.id === id);
+      return account?.provider === 'INSTAGRAM';
+    });
+
+    if (hasInstagram && !mediaUrl && !imageUrl) {
+      setError('Instagram requiere una imagen o video. Sube un archivo multimedia.');
+      return;
+    }
+
     try {
       await api.post('/posts', {
         title,
@@ -201,16 +212,18 @@ export default function Dashboard() {
           return {
             provider: account?.provider,
             socialAccountId: accountId,
+            caption: account?.provider === 'INSTAGRAM' ? instagramCaption || null : null,
           };
         }),
       });
-      setMessage('Post creado correctamente. Si está programado, se publicará automáticamente.');
+      setMessage('Post creado correctamente. Si esta programado, se publicara automaticamente.');
       setTitle('');
       setContent('');
       setImageUrl('');
       setMediaUrl('');
       setScheduledAt('');
       setSelectedAccounts([]);
+      setInstagramCaption('');
       loadData();
     } catch (err: any) {
       setError(err.response?.data?.error || 'Error creando el post.');
@@ -423,6 +436,22 @@ export default function Dashboard() {
                   </p>
                 )}
                 </label>
+              {accounts.some((a) => a.provider === 'INSTAGRAM') && selectedAccounts.some((id) => {
+                const acc = accounts.find((a) => a.id === id);
+                return acc?.provider === 'INSTAGRAM';
+              }) && (
+                <label className="block text-sm text-slate-300">
+                  Comentario para Instagram (se publica como comentario en el post)
+                  <textarea
+                    value={instagramCaption}
+                    onChange={(event) => setInstagramCaption(event.target.value)}
+                    rows={3}
+                    placeholder="Agrega hashtags o un comentario para la publicacion de Instagram..."
+                    className="mt-2 w-full rounded-2xl border border-pink-500/50 bg-slate-950 px-4 py-3 text-white outline-none focus:border-pink-400 placeholder-slate-500"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">Hashtags o texto adicional. Se agregara al final de la descripcion del post.</p>
+                </label>
+              )}
               <div className="rounded-3xl bg-slate-950/70 p-4">
                 <p className="text-sm text-slate-400">Selecciona destinos</p>
                 <div className="mt-3 grid gap-3">

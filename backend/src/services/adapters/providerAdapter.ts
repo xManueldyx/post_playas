@@ -7,6 +7,7 @@ export interface PublishPayload {
   title: string;
   content: string;
   imageUrl?: string | null;
+  caption?: string;
 }
 
 export interface ProviderPublishContext {

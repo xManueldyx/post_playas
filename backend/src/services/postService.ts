@@ -81,14 +81,18 @@ export async function processPublishJob(postId: string) {
 
     try {
       logger.info('Usando token %s para publicar en %s', decryptedToken ? '****' : 'sin-token', destination.provider);
+
+      const publishPayload = {
+        id: post.id,
+        title: post.title,
+        content: post.content,
+        imageUrl: post.imageUrl,
+        caption: destination.caption || undefined,
+      };
+
       const result = await publishToProvider(
         destination.provider,
-        {
-          id: post.id,
-          title: post.title,
-          content: post.content,
-          imageUrl: post.imageUrl,
-        },
+        publishPayload,
         {
           accessToken: decryptedToken,
           providerAccountId: socialAccount?.providerAccountId,

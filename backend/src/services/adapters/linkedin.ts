@@ -1,6 +1,8 @@
 import { ProviderAdapter, PublishResult, ProviderPublishContext, PublishPayload } from './providerAdapter';
 import logger from '../../lib/logger';
 
+const FETCH_TIMEOUT_MS = 30_000;
+
 export class LinkedInAdapter implements ProviderAdapter {
   async publish(post: PublishPayload, context: ProviderPublishContext): Promise<PublishResult> {
     logger.info('Publicando en LinkedIn el post %s', post.id);
@@ -36,6 +38,7 @@ export class LinkedInAdapter implements ProviderAdapter {
           'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC',
         },
       }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
 
     if (!response.ok) {

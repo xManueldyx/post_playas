@@ -86,6 +86,7 @@ model PostDestination {
   externalId      String?
   errorMessage    String?
   attemptedAt     DateTime?
+  caption         String?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   post            Post              @relation(fields: [postId], references: [id], onDelete: Cascade)

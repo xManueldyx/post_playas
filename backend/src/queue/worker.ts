@@ -1,11 +1,16 @@
-import { publishQueue } from './queue';
+import { getBoss } from './queue';
 import { processPublishJob } from '../services/postService';
+import logger from '../lib/logger';
 
-publishQueue.process(async (job) => {
-  const { postId } = job.data as { postId: string };
-  return processPublishJob(postId);
-});
+export async function startWorker() {
+  const boss = await getBoss();
 
-publishQueue.on('error', (error) => {
-  console.error('Publish queue error', error);
-});
+  await boss.work<{ postId: string }>('publish', async (jobs) => {
+    for (const job of jobs) {
+      logger.info('Procesando job %s para post %s', job.id, job.data.postId);
+      await processPublishJob(job.data.postId);
+    }
+  });
+
+  logger.info('pg-boss worker registrado en cola publish');
+}
